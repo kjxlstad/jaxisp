@@ -1,0 +1,79 @@
+sensor:
+  width: 3000
+  height: 2000
+  bit_depth: 12
+  bayer_pattern: rggb
+
+dpc:
+  diff_threshold: 30
+
+blc:
+  bl_r: 0
+  bl_gr: 0
+  bl_gb: 0
+  bl_b: 0
+  alpha: 0
+  beta: 0
+
+aaf: ~
+
+awb:
+  r_gain: &r_gain 2415
+  gr_gain: 1024
+  gb_gain: 1024
+  b_gain: &b_gain 1168
+
+cnf:
+  diff_threshold: 0
+  r_gain: *r_gain
+  b_gain: *b_gain
+
+cfa:
+  mode: malvar
+
+ccm:
+  ccm:
+    - [ 1896, -811, -62, 0 ]
+    - [ -160, 1687, -503, 0 ]
+    - [ 18, -557, 1563, 0 ]
+
+gac:
+  gain: 256
+  gamma: 0.42
+
+csc: ~
+
+nlm:
+  window_size: 11
+  patch_size: 5
+  h: 5
+
+bnf:
+  intensity_sigma: 0.5
+  spatial_sigma: 0.4
+
+ceh:
+  tiles: [4, 6]
+  clip_limit: 0.02
+
+eeh:
+  edge_gain: 0.5
+  edge_threshold: 4
+  flat_threshold: 2
+  delta_threshold: 64
+
+fcs:
+  delta_min: 4
+  delta_max: 16
+
+hsc:
+  hue_offset: 0
+  saturation_gain: 256
+
+bcc:
+  brightness_offset: 0
+  contrast_gain: 256
+
+scl:
+  width: 1536
+  height: 1024
