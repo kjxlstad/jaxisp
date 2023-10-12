@@ -36,9 +36,8 @@ class DPC(ISPNode):
             grid = bayer_neighbor_pixels(array, pattern=bayer_pattern)
 
             center = grid[C]
-            neighbors = jnp.compress(jnp.arange(9) != C, grid, axis=0)
+            neighbors = grid[[NW, N, NE, W, E, SW, S, SE], ...]
 
-            # neigbors = grid[[NW, N, NE, W, E, SW, S, SE], ...]
             neighbors_diff = jnp.abs(center - neighbors)
             mask = jnp.all(neighbors_diff > diff_threshold, axis=0)
 
