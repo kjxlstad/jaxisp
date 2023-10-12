@@ -1,11 +1,12 @@
 from enum import Enum
 from itertools import product
 from functools import partial
+from typing import Self
 
 from jax import jit, vmap
-from jax import lax
 import jax.numpy as jnp
-from jaxtyping import Array, Shaped
+
+from jaxisp.array_types import BayerMosaic, BayerChannels, Tensor2D, Tensor3D
 
 
 class BayerPattern(Enum):
@@ -15,12 +16,8 @@ class BayerPattern(Enum):
     GRBG = 0, 2, 1, 3
 
     @classmethod
-    def from_str(cls, string: str):
+    def from_str(cls, string: str) -> Self:
         return cls[string.upper()]
-
-
-BayerMosaic = Shaped[Array, "h w"]
-BayerChannels = Shaped[BayerMosaic, "4 h/2 w/2"]
 
 
 @partial(jit, static_argnums=(1,))
@@ -46,7 +43,7 @@ def merge_bayer(channels: BayerChannels, pattern: BayerPattern) -> BayerMosaic:
 # This axis order is quite weird, this is just a reordered normal sliding window
 # TODO: add good typing
 @partial(jit, static_argnums=(1,))
-def neighbor_windows(array, window_size: int = 3):
+def neighbor_windows(array: Tensor2D, window_size: int = 3) -> Tensor3D:
     assert window_size % 2 == 1
     height = array.shape[0] - window_size + 1
     width = array.shape[1] - window_size + 1
@@ -55,6 +52,6 @@ def neighbor_windows(array, window_size: int = 3):
 
 
 @partial(jit, static_argnums=(1,))
-def bayer_neighbor_pixels(array, pattern: BayerChannels):
+def bayer_neighbor_pixels(array: Tensor2D, pattern: BayerChannels) -> Tensor3D:
     sliding_windows = vmap(partial(neighbor_windows, window_size=3), in_axes=0, out_axes=1)
     return sliding_windows(split_bayer(jnp.pad(array, 2, mode="reflect"), pattern))

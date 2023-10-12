@@ -2,7 +2,7 @@ from jax import jit
 import jax.numpy as jnp
 
 from jaxisp.nodes.common import ISPNode
-
+from jaxisp.array_types import RGBImage
 
 class CCM(ISPNode):
     def compile(
@@ -15,7 +15,7 @@ class CCM(ISPNode):
         matrix = ccm[:3]
         bias = ccm[3].reshape(1, 1, 3)
 
-        def compute(array):
+        def compute(array: RGBImage) -> RGBImage:
             ccm_rgb_image = array @ matrix + bias
             return jnp.clip(ccm_rgb_image >> 10, 0, saturation_hdr)
 

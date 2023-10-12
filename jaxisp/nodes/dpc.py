@@ -7,6 +7,7 @@ import jax.numpy as jnp
 
 from jaxisp.nodes.common import ISPNode
 from jaxisp.helpers import BayerPattern, bayer_neighbor_pixels, merge_bayer
+from jaxisp.array_types import BayerMosaic
 
 # shorthand cardinal directions
 NW = 0
@@ -21,9 +22,6 @@ SE = 8
 
 
 class DPC(ISPNode):
-    sensor_bayer_pattern: BayerPattern
-    diff_threshold: int
-
     def compile(
         self,
         bayer_pattern: str,
@@ -32,7 +30,7 @@ class DPC(ISPNode):
     ):
         bayer_pattern = BayerPattern[bayer_pattern.upper()]
 
-        def compute(array):
+        def compute(array: BayerMosaic) -> BayerMosaic:
             grid = bayer_neighbor_pixels(array, pattern=bayer_pattern)
 
             center = grid[C]

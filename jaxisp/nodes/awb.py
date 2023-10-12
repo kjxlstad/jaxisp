@@ -5,6 +5,7 @@ import jax.numpy as jnp
 
 from jaxisp.nodes.common import ISPNode
 from jaxisp.helpers import BayerPattern, split_bayer, merge_bayer
+from jaxisp.array_types import BayerMosaic
 
 
 class AWB(ISPNode):
@@ -23,7 +24,7 @@ class AWB(ISPNode):
         bayer_to_channels = partial(split_bayer, pattern=bayer_pattern)
         channels_to_bayer = partial(merge_bayer, pattern=bayer_pattern)
 
-        def compute(array):
+        def compute(array: BayerMosaic) -> BayerMosaic:
             channels = bayer_to_channels(array)
             gains = jnp.array([r_gain, gr_gain, gb_gain, b_gain]).reshape(4, 1, 1)
 

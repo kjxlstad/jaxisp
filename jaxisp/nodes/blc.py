@@ -5,6 +5,7 @@ import jax.numpy as jnp
 
 from jaxisp.nodes.common import ISPNode
 from jaxisp.helpers import BayerPattern, split_bayer, merge_bayer
+from jaxisp.array_types import BayerMosaic
 
 
 class BLC(ISPNode):
@@ -23,7 +24,7 @@ class BLC(ISPNode):
         bayer_to_channels = partial(split_bayer, pattern=bayer_pattern)
         channels_to_bayer = partial(merge_bayer, pattern=bayer_pattern)
 
-        def compute(array):
+        def compute(array: BayerMosaic) -> BayerMosaic:
             r, gr, gb, b = bayer_to_channels(array)
 
             r = jnp.clip(r - bl_r, 0)

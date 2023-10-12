@@ -1,10 +1,9 @@
-from functools import partial
-
-from jax import jit, vmap
+from jax import jit
 import jax.numpy as jnp
 
 from jaxisp.nodes.common import ISPNode
 from jaxisp.helpers import BayerPattern, bayer_neighbor_pixels, merge_bayer
+from jaxisp.array_types import BayerMosaic
 
 
 class AAF(ISPNode):
@@ -15,7 +14,7 @@ class AAF(ISPNode):
     ):
         bayer_pattern = BayerPattern[bayer_pattern.upper()]
 
-        def compute(array):
+        def compute(array: BayerMosaic) -> BayerMosaic:
             grid = bayer_neighbor_pixels(array, pattern=bayer_pattern)
 
             multipliers = jnp.ones_like(grid).at[4].set(8)
