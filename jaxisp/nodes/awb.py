@@ -1,5 +1,3 @@
-from functools import partial
-
 from jax import jit
 import jax.numpy as jnp
 
@@ -21,15 +19,12 @@ class AWB(ISPNode):
     ):
         bayer_pattern = BayerPattern.from_str(bayer_pattern)
 
-        bayer_to_channels = partial(split_bayer, pattern=bayer_pattern)
-        channels_to_bayer = partial(merge_bayer, pattern=bayer_pattern)
-
         def compute(array: BayerMosaic) -> BayerMosaic:
-            channels = bayer_to_channels(array)
+            channels = split_bayer(array, pattern=bayer_pattern)
             gains = jnp.array([r_gain, gr_gain, gb_gain, b_gain]).reshape(4, 1, 1)
 
             wb_channels = (channels * gains) >> 10
-            wb_bayer = channels_to_bayer(wb_channels)
+            wb_bayer = merge_bayer(wb_channels, pattern=bayer_pattern)
             return jnp.clip(wb_bayer, 0, saturation_hdr)
 
         return jit(compute)

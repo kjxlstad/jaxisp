@@ -1,5 +1,3 @@
-from functools import partial
-
 from jax import jit
 import jax.numpy as jnp
 
@@ -21,17 +19,15 @@ class BLC(ISPNode):
         **kwargs
     ):
         bayer_pattern = BayerPattern[bayer_pattern.upper()]
-        bayer_to_channels = partial(split_bayer, pattern=bayer_pattern)
-        channels_to_bayer = partial(merge_bayer, pattern=bayer_pattern)
 
         def compute(array: BayerMosaic) -> BayerMosaic:
-            r, gr, gb, b = bayer_to_channels(array)
+            r, gr, gb, b = split_bayer(array, pattern=bayer_pattern)
 
             r = jnp.clip(r - bl_r, 0)
             gr -= bl_gr - jnp.right_shift(r * alpha, 10)
             gb -= bl_gb - jnp.right_shift(b * beta, 10)
             b = jnp.clip(b - bl_b, 0)
 
-            return channels_to_bayer(jnp.stack([r, gr, gb, b]))
+            return merge_bayer(jnp.stack([r, gr, gb, b]), pattern=bayer_pattern)
 
         return jit(compute)
