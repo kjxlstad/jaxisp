@@ -1,8 +1,8 @@
-from jax import jit
 import jax.numpy as jnp
+from jax import jit
 
-from jaxisp.nodes.common import ISPNode
 from jaxisp.array_types import ImageRGB
+from jaxisp.nodes.common import ISPNode
 
 
 class CCM(ISPNode):

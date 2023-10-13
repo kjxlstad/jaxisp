@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name="jaxisp"
+description="Remimplementation of fast-openISP in composable JAX functions"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "jax",
+    "jaxtyping"
+]
+dynamic=["version"]
+
+[tool.setuptools]
+packages = ["jaxisp"]
+
+[tool.black]
+line-length = 79
+skip-string-normalization = true
+
+[tool.ruff]
+select = ["E", "F", "I", "N", "W"]
+line-length = 79
+target-version = "py312"
+# allow jaxtyping forard annotation
+ignore = ["F722"]

@@ -2,12 +2,12 @@
 TODO: add link to diagram
 """
 
-from jax import jit
 import jax.numpy as jnp
+from jax import jit
 from jaxtyping import Array, Shaped
 
-from jaxisp.nodes.common import ISPNode
 from jaxisp.helpers import BayerPattern, bayer_neighbor_pixels, merge_bayer
+from jaxisp.nodes.common import ISPNode
 
 # shorthand cardinal directions
 NW = 0
@@ -30,7 +30,9 @@ class DPC(ISPNode):
     ):
         bayer_pattern = BayerPattern[bayer_pattern.upper()]
 
-        def compute(bayer_mosaic: Shaped[Array, "h w"]) -> Shaped[Array, "h w"]:
+        def compute(
+            bayer_mosaic: Shaped[Array, "h w"]
+        ) -> Shaped[Array, "h w"]:
             grid = bayer_neighbor_pixels(bayer_mosaic, pattern=bayer_pattern)
 
             center = grid[C]
@@ -61,7 +63,9 @@ class DPC(ISPNode):
                 axis=-1,
             )
 
-            dpc_array = jnp.take_along_axis(neighbor_stack >> 1, indices, axis=-1).squeeze(-1)
+            dpc_array = jnp.take_along_axis(
+                neighbor_stack >> 1, indices, axis=-1
+            ).squeeze(-1)
             res_array = mask * dpc_array + ~mask * center
 
             return merge_bayer(res_array, pattern=bayer_pattern)

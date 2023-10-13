@@ -1,11 +1,11 @@
 from functools import partial
 
-from jax import jit
 import jax.numpy as jnp
+from jax import jit
 from jaxtyping import Array, Shaped
 
+from jaxisp.helpers import BayerPattern, mean_filter, merge_bayer, split_bayer
 from jaxisp.nodes.common import ISPNode
-from jaxisp.helpers import BayerPattern, split_bayer, merge_bayer, mean_filter
 
 
 # TODO: add output type
@@ -13,7 +13,9 @@ from jaxisp.helpers import BayerPattern, split_bayer, merge_bayer, mean_filter
 def compute_noise_diff(channels: Shaped[Array, "4 h w"], diff_threshold: int):
     r, gr, gb, b = channels
     avg_r = mean_filter(r, window_size=5)
-    avg_g = (mean_filter(gr, window_size=5) + mean_filter(gb, window_size=5)) >> 1
+    avg_g = (
+        mean_filter(gr, window_size=5) + mean_filter(gb, window_size=5)
+    ) >> 1
     avg_b = mean_filter(b, window_size=5)
 
     is_r_noise = (
@@ -36,14 +38,18 @@ def compute_noise_diff(channels: Shaped[Array, "4 h w"], diff_threshold: int):
 # TODO: type hint
 @jit
 def piecewise_weight(y, weight, lower_bound, upper_bound):
-    predicate = (lower_bound.reshape(-1, 1, 1) < y) & (y <= upper_bound.reshape(-1, 1, 1))
+    predicate = (lower_bound.reshape(-1, 1, 1) < y) & (
+        y <= upper_bound.reshape(-1, 1, 1)
+    )
     return jnp.sum(predicate * weight.reshape(-1, 1, 1), axis=0)
 
 
 # todo: type hint
 @partial(jit, static_argnums=(5,))
 def compute_noise_correction(array, avg_g, avg_c1, avg_c2, y, gain):
-    damp_factor = jnp.select([gain <= 1024, 1024 < gain <= 1229, 1229 < gain], [256, 128, 77])
+    damp_factor = jnp.select(
+        [gain <= 1024, 1024 < gain <= 1229, 1229 < gain], [256, 128, 77]
+    )
 
     max_avg = jnp.maximum(avg_g, avg_c2)
     signal_gap = array - max_avg
@@ -71,11 +77,15 @@ class CNF(ISPNode):
     ):
         bayer_pattern = BayerPattern[bayer_pattern.upper()]
 
-        def compute(bayer_mosaic: Shaped[Array, "h w"]) -> Shaped[Array, "h w"]:
+        def compute(
+            bayer_mosaic: Shaped[Array, "h w"]
+        ) -> Shaped[Array, "h w"]:
             channels = split_bayer(bayer_mosaic, pattern=bayer_pattern)
             r, gr, gb, b = channels
 
-            avg_r, avg_g, avg_b, is_r_noise, is_b_noise = compute_noise_diff(channels, diff_threshold)
+            avg_r, avg_g, avg_b, is_r_noise, is_b_noise = compute_noise_diff(
+                channels, diff_threshold
+            )
 
             y = (306 * avg_r + 601 * avg_g + 117 * avg_b) >> 10
             r_cnc = compute_noise_correction(r, avg_g, avg_r, avg_b, y, r_gain)
@@ -83,7 +93,9 @@ class CNF(ISPNode):
             r_cnc = is_r_noise * r_cnc + ~is_r_noise * r
             b_cnc = is_b_noise * b_cnc + ~is_b_noise * b
 
-            bayer = merge_bayer(jnp.stack([r_cnc, gr, gb, b_cnc]), pattern=bayer_pattern)
+            bayer = merge_bayer(
+                jnp.stack([r_cnc, gr, gb, b_cnc]), pattern=bayer_pattern
+            )
             return jnp.clip(bayer, 0, saturation_hdr)
 
         return jit(compute)
