@@ -9,12 +9,19 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "jax",
-    "jaxtyping"
+    "jaxtyping",
+    "beartype",
 ]
 dynamic=["version"]
 
 [tool.setuptools]
 packages = ["jaxisp"]
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "ruff",
+]
 
 [tool.black]
 line-length = 79
