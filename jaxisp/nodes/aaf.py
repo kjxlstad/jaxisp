@@ -6,6 +6,7 @@ from jaxisp.nodes.common import ISPNode
 from jaxisp.helpers import BayerPattern, bayer_neighbor_pixels, merge_bayer
 
 
+# TODO: this is actually slower than numpy implementation
 class AAF(ISPNode):
     def compile(
         self,
@@ -14,7 +15,7 @@ class AAF(ISPNode):
     ):
         bayer_pattern = BayerPattern[bayer_pattern.upper()]
 
-        def compute(bayer_mosaic: Shaped[Array, "h w"]) -> Shaped[Array, "4 h/2 w/2"]:
+        def compute(bayer_mosaic: Shaped[Array, "h w"]) -> Shaped[Array, "h w"]:
             grid = bayer_neighbor_pixels(bayer_mosaic, pattern=bayer_pattern)
 
             multipliers = jnp.ones_like(grid).at[4].set(8)

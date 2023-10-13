@@ -6,7 +6,7 @@ from jaxisp.array_types import ImageRGB
 
 
 class GAC(ISPNode):
-    def compile(self, gain: int, gamma: int, saturation_hdr: int, saturation_sdr: int, **kwargs):
+    def compile(self, gain: int, gamma: float, saturation_hdr: int, saturation_sdr: int, **kwargs):
         x = jnp.arange(saturation_hdr + 1)
         lut = ((x / saturation_hdr) ** gamma) * saturation_sdr
 

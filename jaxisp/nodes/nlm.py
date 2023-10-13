@@ -13,7 +13,7 @@ class NLM(ISPNode):
         distance = jnp.arange(255**2)
         lut = (1024 * jnp.exp(-distance / h**2)).astype(jnp.int32)
 
-        batched_mean_filter = vmap(partial(mean_filter, window_size=patch_size))
+        batched_mean_filter = jit(vmap(partial(mean_filter, window_size=patch_size)))
 
         def compute(array: ImageYUV) -> ImageYUV:
             padded = pad_spatial(array, padding=window_size // 2)

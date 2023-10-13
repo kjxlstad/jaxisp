@@ -9,7 +9,7 @@ from jaxisp.helpers import BayerPattern, split_bayer, merge_bayer, mean_filter
 
 
 # TODO: add output type
-@jit
+@partial(jit, static_argnums=(1,))
 def compute_noise_diff(channels: Shaped[Array, "4 h w"], diff_threshold: int):
     r, gr, gb, b = channels
     avg_r = mean_filter(r, window_size=5)
@@ -71,7 +71,7 @@ class CNF(ISPNode):
     ):
         bayer_pattern = BayerPattern[bayer_pattern.upper()]
 
-        def compute(bayer_mosaic: Shaped[Array, "h w"]) -> Shaped[Array, "4 h/2 w/2"]:
+        def compute(bayer_mosaic: Shaped[Array, "h w"]) -> Shaped[Array, "h w"]:
             channels = split_bayer(bayer_mosaic, pattern=bayer_pattern)
             r, gr, gb, b = channels
 

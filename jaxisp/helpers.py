@@ -1,4 +1,4 @@
-from typing import Iterable
+from typing import Generator
 from enum import Enum
 from itertools import product
 from functools import partial
@@ -8,6 +8,7 @@ import jax.numpy as jnp
 from jaxtyping import Array, Shaped
 
 
+# TODO: double check channel order
 class BayerPattern(Enum):
     RGGB = 0, 1, 2, 3
     GBRG = 1, 2, 0, 3
@@ -38,11 +39,9 @@ def merge_bayer(channels: Shaped[Array, "4 h w"], pattern: BayerPattern) -> Shap
     )
 
 
-# TODO: figure this out better
-# This axis order is quite weird, this is just a reordered normal sliding window
-# TODO: add good typing
-# This works, TODO: should be type hinted that it supports spatial images, ex. [H, W] or
-def lazy_neighbor_windows(array: Shaped[Array, "h w ..."], window_size: int = 3) -> Iterable[Shaped[Array, "h w ..."]]:
+def lazy_neighbor_windows(
+    array: Shaped[Array, "h w ..."], window_size: int = 3
+) -> Generator[Shaped[Array, "h w ..."], None, None]:
     assert window_size % 2 == 1, "Window size must be odd"
     height = array.shape[0] - window_size + 1
     width = array.shape[1] - window_size + 1
@@ -54,7 +53,7 @@ def lazy_neighbor_windows(array: Shaped[Array, "h w ..."], window_size: int = 3)
 
 # TODO: research speed of this compared to just calling list(lazy_neighbor_windows)
 @partial(jit, static_argnums=(1,))
-def neighbor_windows(array: Shaped[Array, "h w 3"], window_size: int = 3) -> Shaped[Array, "b _ _ 3"]:
+def neighbor_windows(array: Shaped[Array, "h w ..."], window_size: int = 3) -> Shaped[Array, "b _ _ ..."]:
     assert window_size % 2 == 1, "Window size must be odd"
     height = array.shape[0] - window_size + 1
     width = array.shape[1] - window_size + 1
@@ -62,9 +61,8 @@ def neighbor_windows(array: Shaped[Array, "h w 3"], window_size: int = 3) -> Sha
     return jnp.stack([array[j : j + height, i : i + width, ...] for j, i in product(range(window_size), repeat=2)])
 
 
-# TODO: deprecate, padded windows should be enough
 @partial(jit, static_argnums=(1,))
-def bayer_neighbor_pixels(array: Shaped[Array, "h w"], pattern: BayerPattern) -> Shaped[Array, "9 4 h w"]:
+def bayer_neighbor_pixels(array: Shaped[Array, "h w"], pattern: BayerPattern) -> Shaped[Array, "9 4 h/2 w/2"]:
     sliding_windows = vmap(partial(neighbor_windows, window_size=3), out_axes=1)
     padded = pad_spatial(array, padding=2, mode="reflect")
     channels = split_bayer(padded, pattern=pattern)

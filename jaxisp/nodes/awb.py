@@ -13,7 +13,7 @@ class AWB(ISPNode):
     ):
         bayer_pattern = BayerPattern.from_str(bayer_pattern)
 
-        def compute(bayer_mosaic: Shaped[Array, ["h w"]]) -> Shaped[Array, ["h w"]]:
+        def compute(bayer_mosaic: Shaped[Array, "h w"]) -> Shaped[Array, "h w"]:
             channels = split_bayer(bayer_mosaic, pattern=bayer_pattern)
             gains = jnp.array([r_gain, gr_gain, gb_gain, b_gain]).reshape(4, 1, 1)
 
