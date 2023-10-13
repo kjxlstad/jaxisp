@@ -3,7 +3,7 @@ from itertools import product
 from functools import partial
 from typing import Self
 
-from jax import jit, vmap
+from jax import jit, vmap, lax
 import jax.numpy as jnp
 
 from jaxisp.array_types import BayerMosaic, BayerChannels, Tensor2D, Tensor3D
@@ -42,16 +42,47 @@ def merge_bayer(channels: BayerChannels, pattern: BayerPattern) -> BayerMosaic:
 # TODO: figure this out better
 # This axis order is quite weird, this is just a reordered normal sliding window
 # TODO: add good typing
-@partial(jit, static_argnums=(1,))
-def neighbor_windows(array: Tensor2D, window_size: int = 3) -> Tensor3D:
-    assert window_size % 2 == 1
+# This works, TODO: should be type hinted that it supports spatial images, ex. [H, W] or
+def lazy_neighbor_windows(array: Tensor2D, window_size: int = 3):
+    assert window_size % 2 == 1, "Window size must be odd"
     height = array.shape[0] - window_size + 1
     width = array.shape[1] - window_size + 1
 
-    return jnp.stack([array[..., j : j + height, i : i + width] for j, i in product(range(window_size), repeat=2)])
+    for j in range(window_size):
+        for i in range(window_size):
+            yield array[j : j + height, i : i + width, ...]
+
+
+# TODO: research speed of this compared to just calling list(lazy_neighbor_windows)
+@partial(jit, static_argnums=(1,))
+def neighbor_windows(array: Tensor2D, window_size: int = 3) -> Tensor3D:
+    assert window_size % 2 == 1, "Window size must be odd"
+    height = array.shape[0] - window_size + 1
+    width = array.shape[1] - window_size + 1
+
+    return jnp.stack([array[j : j + height, i : i + width, ...] for j, i in product(range(window_size), repeat=2)])
+
+
+# TODO: deprecate, padded windows should be enough
+@partial(jit, static_argnums=(1,))
+def bayer_neighbor_pixels(array: Tensor2D, pattern: BayerChannels) -> Tensor3D:
+    sliding_windows = vmap(partial(neighbor_windows, window_size=3), out_axes=1)
+    padded = pad_spatial(array, padding=2, mode="reflect")
+    channels = split_bayer(padded, pattern=pattern)
+    return sliding_windows(channels)
+
+
+@partial(jit, static_argnums=(1, 2))
+def pad_spatial(array, padding: int, mode: str = "reflect"):
+    # TODO: a bunch of headaches could be alleviated by using channel first axes order
+    spatial_dims = (0, 1)
+    padding = [(padding, padding) if dim in spatial_dims else (0, 0) for dim in range(array.ndim)]
+    return jnp.pad(array, padding, mode=mode)
 
 
 @partial(jit, static_argnums=(1,))
-def bayer_neighbor_pixels(array: Tensor2D, pattern: BayerChannels) -> Tensor3D:
-    sliding_windows = vmap(partial(neighbor_windows, window_size=3), in_axes=0, out_axes=1)
-    return sliding_windows(split_bayer(jnp.pad(array, 2, mode="reflect"), pattern))
+def mean_filter(array: Tensor2D, window_size: int) -> Tensor3D:
+    assert window_size % 2 == 1, "Filter size must be odd"
+    padded = pad_spatial(array, window_size // 2, mode="reflect")
+    windows = lazy_neighbor_windows(padded, window_size=window_size)
+    return (sum(windows) / window_size**2).astype(array.dtype)
