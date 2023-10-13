@@ -1,10 +1,11 @@
 from functools import partial
 
-from jax import jit, vmap, lax
+from jax import jit, vmap
 import jax.numpy as jnp
 
 from jaxisp.helpers import mean_filter, neighbor_windows, pad_spatial
 from jaxisp.nodes.common import ISPNode
+from jaxisp.array_types import ImageYUV
 
 
 class NLM(ISPNode):
@@ -14,7 +15,7 @@ class NLM(ISPNode):
 
         batched_mean_filter = vmap(partial(mean_filter, window_size=patch_size))
 
-        def compute(array):
+        def compute(array: ImageYUV) -> ImageYUV:
             padded = pad_spatial(array, padding=window_size // 2)
             windows = neighbor_windows(padded, window_size=window_size)
 

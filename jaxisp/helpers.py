@@ -1,12 +1,11 @@
+from typing import Iterable
 from enum import Enum
 from itertools import product
 from functools import partial
-from typing import Self
 
-from jax import jit, vmap, lax
+from jax import jit, vmap
 import jax.numpy as jnp
-
-from jaxisp.array_types import BayerMosaic, BayerChannels, Tensor2D, Tensor3D
+from jaxtyping import Array, Shaped
 
 
 class BayerPattern(Enum):
@@ -16,19 +15,19 @@ class BayerPattern(Enum):
     GRBG = 0, 2, 1, 3
 
     @classmethod
-    def from_str(cls, string: str) -> Self:
+    def from_str(cls, string: str) -> "BayerPattern":
         return cls[string.upper()]
 
 
 @partial(jit, static_argnums=(1,))
-def split_bayer(bayer_image: BayerMosaic, pattern: BayerPattern) -> BayerChannels:
+def split_bayer(bayer_image: Shaped[Array, "h w"], pattern: BayerPattern) -> Shaped[Array, "4 h/2 w/2"]:
     """Splits a zero channel bayer mosaic matrix into its 4 color-channels."""
     channels = [bayer_image[y::2, x::2] for y, x in product((0, 1), repeat=2)]
     return jnp.stack([channels[i] for i in pattern.value])
 
 
 @partial(jit, static_argnums=(1,))
-def merge_bayer(channels: BayerChannels, pattern: BayerPattern) -> BayerMosaic:
+def merge_bayer(channels: Shaped[Array, "4 h w"], pattern: BayerPattern) -> Shaped[Array, "h*2 w*2"]:
     _, h_half, w_half = channels.shape
 
     r0c0, r0c1, r1c0, r1c1 = (channels[i] for i in pattern.value)
@@ -43,7 +42,7 @@ def merge_bayer(channels: BayerChannels, pattern: BayerPattern) -> BayerMosaic:
 # This axis order is quite weird, this is just a reordered normal sliding window
 # TODO: add good typing
 # This works, TODO: should be type hinted that it supports spatial images, ex. [H, W] or
-def lazy_neighbor_windows(array: Tensor2D, window_size: int = 3):
+def lazy_neighbor_windows(array: Shaped[Array, "h w ..."], window_size: int = 3) -> Iterable[Shaped[Array, "h w ..."]]:
     assert window_size % 2 == 1, "Window size must be odd"
     height = array.shape[0] - window_size + 1
     width = array.shape[1] - window_size + 1
@@ -55,7 +54,7 @@ def lazy_neighbor_windows(array: Tensor2D, window_size: int = 3):
 
 # TODO: research speed of this compared to just calling list(lazy_neighbor_windows)
 @partial(jit, static_argnums=(1,))
-def neighbor_windows(array: Tensor2D, window_size: int = 3) -> Tensor3D:
+def neighbor_windows(array: Shaped[Array, "h w 3"], window_size: int = 3) -> Shaped[Array, "b _ _ 3"]:
     assert window_size % 2 == 1, "Window size must be odd"
     height = array.shape[0] - window_size + 1
     width = array.shape[1] - window_size + 1
@@ -65,7 +64,7 @@ def neighbor_windows(array: Tensor2D, window_size: int = 3) -> Tensor3D:
 
 # TODO: deprecate, padded windows should be enough
 @partial(jit, static_argnums=(1,))
-def bayer_neighbor_pixels(array: Tensor2D, pattern: BayerChannels) -> Tensor3D:
+def bayer_neighbor_pixels(array: Shaped[Array, "h w"], pattern: BayerPattern) -> Shaped[Array, "9 4 h w"]:
     sliding_windows = vmap(partial(neighbor_windows, window_size=3), out_axes=1)
     padded = pad_spatial(array, padding=2, mode="reflect")
     channels = split_bayer(padded, pattern=pattern)
@@ -73,15 +72,16 @@ def bayer_neighbor_pixels(array: Tensor2D, pattern: BayerChannels) -> Tensor3D:
 
 
 @partial(jit, static_argnums=(1, 2))
-def pad_spatial(array, padding: int, mode: str = "reflect"):
+def pad_spatial(array: Shaped[Array, "h w ..."], padding: int, mode: str = "reflect") -> Shaped[Array, "_ _ ..."]:
     # TODO: a bunch of headaches could be alleviated by using channel first axes order
     spatial_dims = (0, 1)
     padding = [(padding, padding) if dim in spatial_dims else (0, 0) for dim in range(array.ndim)]
     return jnp.pad(array, padding, mode=mode)
 
 
+# TODO: should be type hintable with typevar dtype
 @partial(jit, static_argnums=(1,))
-def mean_filter(array: Tensor2D, window_size: int) -> Tensor3D:
+def mean_filter(array: Shaped[Array, "h w ..."], window_size: int) -> Shaped[Array, "h w ..."]:
     assert window_size % 2 == 1, "Filter size must be odd"
     padded = pad_spatial(array, window_size // 2, mode="reflect")
     windows = lazy_neighbor_windows(padded, window_size=window_size)

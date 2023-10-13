@@ -2,14 +2,15 @@ from functools import partial
 
 from jax import jit
 import jax.numpy as jnp
+from jaxtyping import Array, Shaped
 
 from jaxisp.nodes.common import ISPNode
 from jaxisp.helpers import BayerPattern, split_bayer, merge_bayer, mean_filter
-from jaxisp.array_types import BayerMosaic, BayerChannels
 
 
+# TODO: add output type
 @jit
-def compute_noise_diff(channels: BayerChannels, diff_threshold: int):
+def compute_noise_diff(channels: Shaped[Array, "4 h w"], diff_threshold: int):
     r, gr, gb, b = channels
     avg_r = mean_filter(r, window_size=5)
     avg_g = (mean_filter(gr, window_size=5) + mean_filter(gb, window_size=5)) >> 1
@@ -32,12 +33,14 @@ def compute_noise_diff(channels: BayerChannels, diff_threshold: int):
     return avg_r, avg_g, avg_b, is_r_noise, is_b_noise
 
 
+# TODO: type hint
 @jit
 def piecewise_weight(y, weight, lower_bound, upper_bound):
     predicate = (lower_bound.reshape(-1, 1, 1) < y) & (y <= upper_bound.reshape(-1, 1, 1))
     return jnp.sum(predicate * weight.reshape(-1, 1, 1), axis=0)
 
 
+# todo: type hint
 @partial(jit, static_argnums=(5,))
 def compute_noise_correction(array, avg_g, avg_c1, avg_c2, y, gain):
     damp_factor = jnp.select([gain <= 1024, 1024 < gain <= 1229, 1229 < gain], [256, 128, 77])
@@ -68,8 +71,8 @@ class CNF(ISPNode):
     ):
         bayer_pattern = BayerPattern[bayer_pattern.upper()]
 
-        def compute(array: BayerMosaic) -> BayerMosaic:
-            channels = split_bayer(array, pattern=bayer_pattern)
+        def compute(bayer_mosaic: Shaped[Array, "h w"]) -> Shaped[Array, "4 h/2 w/2"]:
+            channels = split_bayer(bayer_mosaic, pattern=bayer_pattern)
             r, gr, gb, b = channels
 
             avg_r, avg_g, avg_b, is_r_noise, is_b_noise = compute_noise_diff(channels, diff_threshold)
