@@ -8,12 +8,11 @@ from jax import jit, vmap
 from jaxtyping import Array, Shaped
 
 
-# TODO: double check channel order
 class BayerPattern(Enum):
     RGGB = 0, 1, 2, 3
-    GBRG = 1, 2, 0, 3
-    BGGR = 2, 3, 1, 0
-    GRBG = 0, 2, 1, 3
+    GBRG = 1, 3, 0, 2
+    BGGR = 3, 2, 1, 0
+    GRBG = 2, 0, 3, 1
 
     @classmethod
     def from_str(cls, string: str) -> "BayerPattern":
