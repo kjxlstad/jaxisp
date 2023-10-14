@@ -1,31 +1,32 @@
-from functools import partial
+from itertools import product
 
 import jax.numpy as jnp
-from jax import jit, vmap
 
-from jaxisp.array_types import ImageYUV
-from jaxisp.helpers import mean_filter, neighbor_windows, pad_spatial
+from jaxisp.helpers import mean_filter, neighbor_windows_slice, pad_spatial
 from jaxisp.nodes.common import ISPNode
+from jaxisp.type_utils import ImageYUV
 
 
 class NLM(ISPNode):
     def compile(self, window_size: int, patch_size: int, h: int, **kwargs):
-        distance = jnp.arange(255**2)
-        lut = (1024 * jnp.exp(-distance / h**2)).astype(jnp.int32)
-
-        batched_mean_filter = jit(
-            vmap(partial(mean_filter, window_size=patch_size))
-        )
+        dist = jnp.arange(255**2)
+        lut = (1024 * jnp.exp(-dist / h**2)).astype(jnp.int32)
 
         def compute(array: ImageYUV) -> ImageYUV:
             padded = pad_spatial(array, padding=window_size // 2)
-            windows = neighbor_windows(padded, window_size=window_size)
 
-            distance = batched_mean_filter((array - windows) ** 2)
-            weight = lut[distance]
-            nlm_image = jnp.sum(windows * weight, axis=0) / jnp.sum(
-                weight, axis=0
-            )
-            return nlm_image.astype(jnp.uint8)
+            nlm_y_image = jnp.zeros_like(array)
+            weights = jnp.zeros_like(array)
 
-        return jit(compute)
+            for x, y in product(range(window_size), repeat=2):
+                window = neighbor_windows_slice(padded, window_size, x, y)
+                distance = mean_filter((array - window) ** 2, patch_size)
+
+                weight = lut[distance]
+
+                nlm_y_image += window * weight
+                weights += weight
+
+            return (nlm_y_image / weights).astype(jnp.uint8)
+
+        return compute

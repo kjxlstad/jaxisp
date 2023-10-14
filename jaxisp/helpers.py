@@ -1,11 +1,13 @@
 from enum import Enum
-from functools import partial
+from functools import partial, reduce
 from itertools import product
-from typing import Generator
+from operator import add
 
 import jax.numpy as jnp
 from jax import jit, vmap
 from jaxtyping import Array, Shaped
+
+from jaxisp.type_utils import WindowdFunc
 
 
 class BayerPattern(Enum):
@@ -38,31 +40,33 @@ def merge_bayer(
     bayer_image = jnp.empty((2 * h_half, 2 * w_half), dtype=channels.dtype)
 
     return (
-        bayer_image.at[0::2, 0::2]
-        .set(r0c0)
-        .at[0::2, 1::2]
-        .set(r0c1)
-        .at[1::2, 0::2]
-        .set(r1c0)
-        .at[1::2, 1::2]
-        .set(r1c1)
+        bayer_image
+        .at[0::2, 0::2].set(r0c0)
+        .at[0::2, 1::2].set(r0c1)
+        .at[1::2, 0::2].set(r1c0)
+        .at[1::2, 1::2].set(r1c1)
     )
 
 
-def lazy_neighbor_windows(
-    array: Shaped[Array, "h w ..."], window_size: int = 3
-) -> Generator[Shaped[Array, "h w ..."], None, None]:
-    assert window_size % 2 == 1, "Window size must be odd"
+@partial(jit, static_argnums=(1, 2, 3))
+def neighbor_windows_slice(array, window_size: int, i: int, j: int):
     height = array.shape[0] - window_size + 1
-    width = array.shape[1] - window_size + 1
-
-    for j in range(window_size):
-        for i in range(window_size):
-            yield array[j : j + height, i : i + width, ...]
+    width = array.shape[0] - window_size + 1
+    return array[j : j + height, i : i + width, ...]
 
 
-# TODO: research speed of this compared to just calling
-# list(lazy_neighbor_windows)
+@partial(jit, static_argnums=(0, 2))
+def reduce_windows(
+    fun: WindowdFunc, array: Shaped[Array, "h w ..."], window_size: int
+) -> Shaped[Array, "h w ..."]:
+    assert window_size % 2 == 1, "Window size must be odd"
+    window_iterator = (
+        neighbor_windows_slice(array, window_size, i, j)
+        for i, j in product(range(window_size), repeat=2)
+    )
+    return reduce(fun, window_iterator)
+
+
 @partial(jit, static_argnums=(1,))
 def neighbor_windows(
     array: Shaped[Array, "h w ..."], window_size: int = 3
@@ -112,5 +116,5 @@ def mean_filter(
 ) -> Shaped[Array, "h w ..."]:
     assert window_size % 2 == 1, "Filter size must be odd"
     padded = pad_spatial(array, window_size // 2, mode="reflect")
-    windows = lazy_neighbor_windows(padded, window_size=window_size)
-    return (sum(windows) / window_size**2).astype(array.dtype)
+    total = reduce_windows(add, padded, window_size)
+    return (total / window_size**2).astype(array.dtype)
