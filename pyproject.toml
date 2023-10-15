@@ -31,5 +31,7 @@ skip-string-normalization = true
 select = ["E", "F", "I", "N", "W"]
 line-length = 79
 target-version = "py312"
-# allow jaxtyping forard annotation
-ignore = ["F722"]
+ignore = [
+    "F722", # allow jaxtyping forard annotation
+    "E701", # allow multiple statements on one line
+]
