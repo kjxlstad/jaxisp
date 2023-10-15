@@ -7,7 +7,7 @@ from pydantic.dataclasses import dataclass
 from returns.result import Failure, Success, safe
 
 from jaxisp.helpers import BayerPattern, CFAMode
-
+from jaxisp.nodes.dpc import DPCMode
 
 def parse[I, O](field: str, parse_fun: Callable[[I], O], mode: str = "before"):
     @field_validator(field, mode=mode, check_fields=False)
@@ -28,6 +28,7 @@ class YamlConfig:
 @dataclass
 class DPCParams:
     diff_threshold: int
+    mode: DPCMode
 
 
 @dataclass
