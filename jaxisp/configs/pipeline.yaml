@@ -1,0 +1,9 @@
+sensor:
+  width: 3000
+  height: 2000
+  bit_depth: 12
+  bayer_pattern: rggb
+
+pipeline:
+  input_node: dpc
+  output_node: dpc

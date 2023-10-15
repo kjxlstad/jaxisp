@@ -1,38 +1,32 @@
-sensor:
-  width: 3000
-  height: 2000
-  bit_depth: 12
-  bayer_pattern: rggb
-
 dpc:
   diff_threshold: 30
 
 blc:
-  bl_r: 0
-  bl_gr: 0
-  bl_gb: 0
-  bl_b: 0
+  black_level_r:  0
+  black_level_gr: 0
+  black_level_gb: 0
+  black_level_b:  0
   alpha: 0
   beta: 0
 
 aaf: ~
 
 awb:
-  r_gain: &r_gain 2415
-  gr_gain: 1024
-  gb_gain: 1024
-  b_gain: &b_gain 1168
+  gain_r: &gain_r 2415
+  gain_gr: 1024
+  gain_gb: 1024
+  gain_b: &gain_b 1168
 
 cnf:
   diff_threshold: 0
-  r_gain: *r_gain
-  b_gain: *b_gain
+  gain_r: *gain_r
+  gain_b: *gain_b
 
 cfa:
   mode: malvar
 
 ccm:
-  ccm:
+  correction_matrix:
     - [ 1896, -811, -62, 0 ]
     - [ -160, 1687, -503, 0 ]
     - [ 18, -557, 1563, 0 ]
@@ -49,12 +43,12 @@ nlm:
   h: 5
 
 bnf:
-  intensity_sigma: 0.5
-  spatial_sigma: 0.4
+  sigma_intensity: 0.5
+  sigma_spatial: 0.4
 
 ceh:
   tiles: [4, 6]
-  clip_limit: 0.02
+  clip: 0.02
 
 eeh:
   edge_gain: 0.5

@@ -16,9 +16,10 @@ class BayerPattern(Enum):
     BGGR = 3, 2, 1, 0
     GRBG = 2, 0, 3, 1
 
-    @classmethod
-    def from_str(cls, string: str) -> "BayerPattern":
-        return cls[string.upper()]
+
+class CFAMode(Enum):
+    BILINEAR = "bilinear"
+    MALVAR = "malvar"
 
 
 @partial(jit, static_argnums=(1,))
