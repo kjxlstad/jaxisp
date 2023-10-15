@@ -1,26 +1,23 @@
 import jax.numpy as jnp
 from jax import jit
-from pydantic.dataclasses import dataclass
+from pydantic import validate_call
 
-from jaxisp.nodes.common import ISPNode
 from jaxisp.type_utils import ImageRGB
 
 
-@dataclass
-class GAC(ISPNode):
-    gain: int
-    gamma: float
+@validate_call
+def gac(
+    gain: int,
+    gamma: float,
+    saturation_sdr: int,
+    saturation_hdr: int,
+):
+    x = jnp.arange(saturation_hdr + 1)
+    lut = ((x / saturation_hdr) ** gamma) * saturation_sdr
 
-    saturation_sdr: int
-    saturation_hdr: int
+    def compute(array: ImageRGB) -> ImageRGB:
+        gac_rgb_image = (array * gain) >> 8
+        gac_rgb_image = jnp.clip(gac_rgb_image, 0, saturation_hdr)
+        return lut[gac_rgb_image]
 
-    def compile(self):
-        x = jnp.arange(self.saturation_hdr + 1)
-        lut = ((x / self.saturation_hdr) ** self.gamma) * self.saturation_sdr
-
-        def compute(array: ImageRGB) -> ImageRGB:
-            gac_rgb_image = (array * self.gain) >> 8
-            gac_rgb_image = jnp.clip(gac_rgb_image, 0, self.saturation_hdr)
-            return lut[gac_rgb_image]
-
-        return jit(compute)
+    return jit(compute)

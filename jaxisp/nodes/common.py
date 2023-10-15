@@ -1,25 +1,13 @@
 from operator import call
-from typing import Callable, TextIO
+from typing import Callable
 
-import yaml
 from pydantic import field_validator
 from pydantic.dataclasses import dataclass
 from returns.result import Failure, Success, safe
 
 from jaxisp.helpers import BayerPattern
 
-
-# TODO: add typing
-class ISPNode:
-    def __post_init__(self):
-        self.execute = self.compile()
-
-    def __call__(self, *args, **kwargs):
-        return self.execute(*args, **kwargs)
-
-    def from_yaml(self, f: TextIO) -> "ISPNode":
-        return self(**yaml.load(f, Loader=yaml.SafeLoader))
-
+# TODO: add a wrapper that incorporated pydantic's validate_call
 
 def parse[I, O](field: str, parse_fun: Callable[[I], O], mode: str = "before"):
     @field_validator(field, mode=mode, check_fields=False)

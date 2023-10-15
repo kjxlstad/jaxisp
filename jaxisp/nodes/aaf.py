@@ -1,28 +1,25 @@
 import jax.numpy as jnp
 from jax import jit
 from jaxtyping import Array, Shaped
-from pydantic.dataclasses import dataclass
+from pydantic import validate_call
 
 from jaxisp.helpers import bayer_neighbor_pixels, merge_bayer
-from jaxisp.nodes.common import ISPNode, SensorConfig
+from jaxisp.nodes.common import SensorConfig
 
 
 # TODO: this is actually slower than numpy implementation
-@dataclass
-class AAF(ISPNode):
-    sensor: SensorConfig
+@validate_call
+def aaf(sensor: SensorConfig):
+    def compute(
+        bayer_mosaic: Shaped[Array, "h w"]
+    ) -> Shaped[Array, "h w"]:
+        grid = bayer_neighbor_pixels(
+            bayer_mosaic, sensor.bayer_pattern
+        )
 
-    def compile(self):
-        def compute(
-            bayer_mosaic: Shaped[Array, "h w"]
-        ) -> Shaped[Array, "h w"]:
-            grid = bayer_neighbor_pixels(
-                bayer_mosaic, self.sensor.bayer_pattern
-            )
+        multipliers = jnp.ones_like(grid).at[4].set(8)
+        aaf_channels = (grid * multipliers).sum(axis=0) >> 4
 
-            multipliers = jnp.ones_like(grid).at[4].set(8)
-            aaf_channels = (grid * multipliers).sum(axis=0) >> 4
+        return merge_bayer(aaf_channels, sensor.bayer_pattern)
 
-            return merge_bayer(aaf_channels, self.sensor.bayer_pattern)
-
-        return jit(compute)
+    return jit(compute)

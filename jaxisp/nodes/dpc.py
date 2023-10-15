@@ -6,10 +6,10 @@ from enum import Enum
 import jax.numpy as jnp
 from jax import jit
 from jaxtyping import Array, Shaped
-from pydantic.dataclasses import dataclass
+from pydantic import validate_call
 
 from jaxisp.helpers import bayer_neighbor_pixels, merge_bayer
-from jaxisp.nodes.common import ISPNode, SensorConfig
+from jaxisp.nodes.common import SensorConfig
 
 # shorthand cardinal directions
 NW = 0
@@ -82,25 +82,21 @@ def mean_dpc(
     return mask * dpc_array + ~mask * center
 
 
-@dataclass
-class DPC(ISPNode):
-    mode: DPCMode
-    diff_threshold: int
+@validate_call
+def dpc(
+    mode: DPCMode,
+    diff_threshold: int,
+    sensor: SensorConfig,
+):
+    correction_func = jit(DPCMode.correction_func(mode))
 
-    sensor: SensorConfig
+    def compute(
+        bayer_mosaic: Shaped[Array, "h w"]
+    ) -> Shaped[Array, "h w"]:
+        grid = bayer_neighbor_pixels(
+            bayer_mosaic, sensor.bayer_pattern
+        )
+        res_array = correction_func(grid, diff_threshold)
+        return merge_bayer(res_array, sensor.bayer_pattern)
 
-
-
-    def compile(self):
-        correction_func = jit(DPCMode.correction_func(self.mode))
-
-        def compute(
-            bayer_mosaic: Shaped[Array, "h w"]
-        ) -> Shaped[Array, "h w"]:
-            grid = bayer_neighbor_pixels(
-                bayer_mosaic, self.sensor.bayer_pattern
-            )
-            res_array = correction_func(grid, self.diff_threshold)
-            return merge_bayer(res_array, self.sensor.bayer_pattern)
-
-        return jit(compute)
+    return jit(compute)

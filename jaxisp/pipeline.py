@@ -40,7 +40,6 @@ class Pipeline:
             for node_name in self.node_order
         ]
 
-
         def compute(array):
             for node in compiled_nodes:
                 array = node(array)
@@ -50,12 +49,14 @@ class Pipeline:
 
     def __call__(self, array):
         return self.execute(array)
+    
+    def __repr__(self) -> str:
+        return f"Pipeline({", ".join(self.node_order)})"
 
 
-
-
-with (open("jaxisp/configs/pipeline.yaml", "r") as config_file,
-      open("jaxisp/configs/parameters/nikon_d3200.yaml") as param_file):
-    config = yaml.load(config_file, Loader=yaml.SafeLoader)
-    parameters = yaml.load(param_file, Loader=yaml.SafeLoader)
-    pipeline = Pipeline(**config, parameters=parameters)
+if __name__ == "__main__":
+    with (open("jaxisp/configs/pipeline.yaml", "r") as config_file,
+        open("jaxisp/configs/parameters/nikon_d3200.yaml") as param_file):
+        config = yaml.load(config_file, Loader=yaml.SafeLoader)
+        parameters = yaml.load(param_file, Loader=yaml.SafeLoader)
+        pipeline = Pipeline(**config, parameters=parameters)
