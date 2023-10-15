@@ -1,5 +1,6 @@
 dpc:
   diff_threshold: 30
+  mode: gradient
 
 blc:
   black_level_r:  0

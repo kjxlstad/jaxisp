@@ -6,9 +6,10 @@ from enum import Enum
 import jax.numpy as jnp
 from jax import jit
 from jaxtyping import Array, Shaped
+from pydantic.dataclasses import dataclass
 
-from jaxisp.helpers import BayerPattern, bayer_neighbor_pixels, merge_bayer
-from jaxisp.nodes.common import ISPNode
+from jaxisp.helpers import bayer_neighbor_pixels, merge_bayer
+from jaxisp.nodes.common import ISPNode, SensorConfig
 
 # shorthand cardinal directions
 NW = 0
@@ -31,7 +32,9 @@ class DPCMode(Enum):
         return {DPCMode.GRADIENT: gradient_dpc, DPCMode.MEAN: mean_dpc}[value]
 
 
-def gradient_dpc(grid, diff_threshold):
+def gradient_dpc(
+    grid: Shaped[Array, "9 4 h w"], diff_threshold: int
+) -> Shaped[Array, "4 h w"]:
     center = grid[C]
     neighbors = grid[[NW, N, NE, W, E, SW, S, SE], ...]
 
@@ -66,7 +69,9 @@ def gradient_dpc(grid, diff_threshold):
     return mask * dpc_array + ~mask * center
 
 
-def mean_dpc(grid, diff_threshold):
+def mean_dpc(
+    grid: Shaped[Array, "9 4 h w"], diff_threshold: int
+) -> Shaped[Array, "4 h w"]:
     center = grid[C]
     neighbors = grid[[NW, N, NE, W, E, SW, S, SE], ...]
 
@@ -77,22 +82,25 @@ def mean_dpc(grid, diff_threshold):
     return mask * dpc_array + ~mask * center
 
 
+@dataclass
 class DPC(ISPNode):
-    def compile(
-        self,
-        bayer_pattern: str,
-        mode: DPCMode,
-        diff_threshold: int,
-        **kwargs,
-    ):
-        correction_func = DPCMode.correction_func(mode)
-        bayer_pattern = BayerPattern[bayer_pattern.upper()]
+    mode: DPCMode
+    diff_threshold: int
+
+    sensor: SensorConfig
+
+
+
+    def compile(self):
+        correction_func = jit(DPCMode.correction_func(self.mode))
 
         def compute(
             bayer_mosaic: Shaped[Array, "h w"]
         ) -> Shaped[Array, "h w"]:
-            grid = bayer_neighbor_pixels(bayer_mosaic, pattern=bayer_pattern)
-            res_array = correction_func(grid, diff_threshold)
-            return merge_bayer(res_array, pattern=bayer_pattern)
+            grid = bayer_neighbor_pixels(
+                bayer_mosaic, self.sensor.bayer_pattern
+            )
+            res_array = correction_func(grid, self.diff_threshold)
+            return merge_bayer(res_array, self.sensor.bayer_pattern)
 
         return jit(compute)

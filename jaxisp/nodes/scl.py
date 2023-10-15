@@ -2,10 +2,18 @@ from functools import partial
 
 from jax import jit
 from jax.image import resize
+from pydantic.dataclasses import dataclass
 
 from jaxisp.nodes.common import ISPNode
 
 
+@dataclass
 class SCL(ISPNode):
-    def compile(self, width: int, height: int, **kwargs):
-        return jit(partial(resize, shape=(height, width, 3), method="linear"))
+    width: int
+    height: int
+
+    def compile(self):
+        # TODO: replace with cv2, orders of magnitude faster
+        return jit(partial(
+            resize, shape=(self.height, self.width, 3), method="linear")
+        )

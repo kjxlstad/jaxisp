@@ -3,9 +3,10 @@ from functools import partial
 import jax.numpy as jnp
 from jax import jit
 from jaxtyping import Array, Shaped
+from pydantic.dataclasses import dataclass
 
-from jaxisp.helpers import BayerPattern, mean_filter, merge_bayer, split_bayer
-from jaxisp.nodes.common import ISPNode
+from jaxisp.helpers import mean_filter, merge_bayer, split_bayer
+from jaxisp.nodes.common import ISPNode, SensorConfig
 
 
 # TODO: add output type
@@ -64,38 +65,38 @@ def compute_noise_correction(array, avg_g, avg_c1, avg_c2, y, gain):
     fade = fade_1 * fade_2
     return fade * chroma_corrected + (1 - fade) * array
 
-
+@dataclass
 class CNF(ISPNode):
-    def compile(
-        self,
-        bayer_pattern: str,
-        diff_threshold: int,
-        r_gain: int,
-        b_gain: int,
-        saturation_hdr: int,
-        **kwargs,
-    ):
-        bayer_pattern = BayerPattern[bayer_pattern.upper()]
+    diff_threshold: int
+    gain_r: int
+    gain_b: int
 
+    sensor: SensorConfig
+    saturation_hdr: int # TODO: fixme
+
+    def compile(self):
         def compute(
             bayer_mosaic: Shaped[Array, "h w"]
         ) -> Shaped[Array, "h w"]:
-            channels = split_bayer(bayer_mosaic, pattern=bayer_pattern)
+            channels = split_bayer(bayer_mosaic, self.sensor.bayer_pattern)
             r, gr, gb, b = channels
 
             avg_r, avg_g, avg_b, is_r_noise, is_b_noise = compute_noise_diff(
-                channels, diff_threshold
+                channels, self.diff_threshold
             )
 
             y = (306 * avg_r + 601 * avg_g + 117 * avg_b) >> 10
-            r_cnc = compute_noise_correction(r, avg_g, avg_r, avg_b, y, r_gain)
-            b_cnc = compute_noise_correction(b, avg_g, avg_b, avg_r, y, b_gain)
+            r_cnc = compute_noise_correction(
+                r, avg_g, avg_r, avg_b, y, self.gain_r)
+            b_cnc = compute_noise_correction(
+                b, avg_g, avg_b, avg_r, y, self.gain_b)
             r_cnc = is_r_noise * r_cnc + ~is_r_noise * r
             b_cnc = is_b_noise * b_cnc + ~is_b_noise * b
 
             bayer = merge_bayer(
-                jnp.stack([r_cnc, gr, gb, b_cnc]), pattern=bayer_pattern
+                jnp.stack([r_cnc, gr, gb, b_cnc]),
+                self.sensor.bayer_pattern
             )
-            return jnp.clip(bayer, 0, saturation_hdr)
+            return jnp.clip(bayer, 0, self.saturation_hdr)
 
         return jit(compute)
