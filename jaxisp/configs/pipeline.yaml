@@ -4,6 +4,8 @@ sensor:
   bit_depth: 12
   bayer_pattern: rggb
 
-pipeline:
-  input_node: dpc
-  output_node: dpc
+node_order:
+  - dpc
+  - blc
+  - awb
+  - cnf
