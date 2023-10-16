@@ -1,3 +1,5 @@
+from typing import Callable
+
 import jax.numpy as jnp
 from jax import jit
 from jaxtyping import Array, Shaped
@@ -8,7 +10,7 @@ from jaxisp.nodes.common import SensorConfig
 
 
 @validate_call
-def blc(
+def blc[Input: Shaped[Array, "h w"], Output: Shaped[Array, "h w"]](
     alpha: int,
     beta: int,
     black_level_r: int,
@@ -16,10 +18,8 @@ def blc(
     black_level_gb: int,
     black_level_b: int,
     sensor: SensorConfig,
-):
-    def compute(
-        bayer_mosaic: Shaped[Array, "h w"]
-    ) -> Shaped[Array, "h w"]:
+) -> Callable[[Input], Output]:
+    def compute(bayer_mosaic: Input) -> Output:
         r, gr, gb, b = split_bayer(bayer_mosaic, sensor.bayer_pattern)
 
         r = jnp.clip(r - black_level_r, 0)

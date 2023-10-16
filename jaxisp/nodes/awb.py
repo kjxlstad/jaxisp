@@ -1,3 +1,5 @@
+from typing import Callable
+
 import jax.numpy as jnp
 from jax import jit
 from jaxtyping import Array, Shaped
@@ -8,7 +10,7 @@ from jaxisp.nodes.common import SensorConfig
 
 
 @validate_call
-def awb(
+def awb[Input: Shaped[Array, "h w"], Output: Shaped[Array, "h w"]](
     gain_r: int,
     gain_gr: int,
     gain_gb: int,
@@ -16,10 +18,8 @@ def awb(
 
     sensor: SensorConfig,
     saturation_hdr: int, # TODO: fixme
-):
-    def compute(
-        bayer_mosaic: Shaped[Array, "h w"]
-    ) -> Shaped[Array, "h w"]:
+) -> Callable[[Input], Output]:
+    def compute(bayer_mosaic: Input) -> Output:
         channels = split_bayer(bayer_mosaic, sensor.bayer_pattern)
         gains = jnp.array(
             [gain_r, gain_gr, gain_gb, gain_b]

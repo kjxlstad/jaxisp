@@ -49,7 +49,7 @@ class Pipeline:
 
     def __call__(self, array):
         return self.execute(array)
-    
+
     def __repr__(self) -> str:
         return f"Pipeline({", ".join(self.node_order)})"
 

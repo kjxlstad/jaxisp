@@ -1,4 +1,5 @@
 from itertools import product
+from typing import Callable
 
 import jax.numpy as jnp
 from pydantic import validate_call
@@ -8,15 +9,15 @@ from jaxisp.type_utils import ImageYUV
 
 
 @validate_call
-def nlm(
+def nlm[Input: ImageYUV, Output: ImageYUV](
     window_size: int,
     patch_size: int,
     h: int,
-):
+) -> Callable[[Input], Output]:
     dist = jnp.arange(255**2)
     lut = (1024 * jnp.exp(-dist / h**2)).astype(jnp.int32)
 
-    def compute(array: ImageYUV) -> ImageYUV:
+    def compute(array: Input) -> Output:
         padded = pad_spatial(array, padding=window_size // 2)
 
         nlm_y_image = jnp.zeros_like(array)

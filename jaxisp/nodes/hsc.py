@@ -1,20 +1,22 @@
+from typing import Callable
 
 import jax.numpy as jnp
 from jax import jit
+from jaxtyping import Array, Shaped
 from pydantic import validate_call
 
 
 @validate_call
-def hsc(
+def hsc[Input: Shaped[Array, "h w 2"], Output: Shaped[Array, "h w 2"]](
     hue_offset: int,
     saturation_gain: int,
     saturation_sdr: int,
-):
+) -> Callable[[Input], Output]:
     hue_offset = jnp.pi * hue_offset / 180
     sin_hue = (256 * jnp.sin(hue_offset)).astype(jnp.int32)
     cos_hue = (256 * jnp.cos(hue_offset)).astype(jnp.int32)
 
-    def compute(array):
+    def compute(array: Input) -> Output:
         cb_image, cr_image = jnp.split(array, 2, axis=-1)
 
         hsc_cb_image = jnp.right_shift(

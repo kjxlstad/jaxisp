@@ -2,6 +2,7 @@
 TODO: add link to diagram
 """
 from enum import Enum
+from typing import Callable
 
 import jax.numpy as jnp
 from jax import jit
@@ -83,16 +84,14 @@ def mean_dpc(
 
 
 @validate_call
-def dpc(
+def dpc[Input: Shaped[Array, "h w"], Output: Shaped[Array, "h w"]](
     mode: DPCMode,
     diff_threshold: int,
     sensor: SensorConfig,
-):
+) -> Callable[[Input], Output]:
     correction_func = jit(DPCMode.correction_func(mode))
 
-    def compute(
-        bayer_mosaic: Shaped[Array, "h w"]
-    ) -> Shaped[Array, "h w"]:
+    def compute(bayer_mosaic: Input) -> Output:
         grid = bayer_neighbor_pixels(
             bayer_mosaic, sensor.bayer_pattern
         )

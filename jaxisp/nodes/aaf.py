@@ -1,3 +1,5 @@
+from typing import Callable
+
 import jax.numpy as jnp
 from jax import jit
 from jaxtyping import Array, Shaped
@@ -9,10 +11,10 @@ from jaxisp.nodes.common import SensorConfig
 
 # TODO: this is actually slower than numpy implementation
 @validate_call
-def aaf(sensor: SensorConfig):
-    def compute(
-        bayer_mosaic: Shaped[Array, "h w"]
-    ) -> Shaped[Array, "h w"]:
+def aaf[Input: Shaped[Array, "h w"], Output: Shaped[Array, "h w"]](
+    sensor: SensorConfig
+) -> Callable[[Input], Output]:
+    def compute(bayer_mosaic: Input) -> Output:
         grid = bayer_neighbor_pixels(
             bayer_mosaic, sensor.bayer_pattern
         )

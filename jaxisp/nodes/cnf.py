@@ -1,4 +1,5 @@
 from functools import partial
+from typing import Callable
 
 import jax.numpy as jnp
 from jax import jit
@@ -66,16 +67,14 @@ def compute_noise_correction(array, avg_g, avg_c1, avg_c2, y, gain):
     return fade * chroma_corrected + (1 - fade) * array
 
 @validate_call
-def cnf(
+def cnf[Input: Shaped[Array, "h w"], Output: Shaped[Array, "h w"]](
     diff_threshold: int,
     gain_r: int,
     gain_b: int,
     sensor: SensorConfig,
     saturation_hdr: int, # TODO: fixme
-):
-    def compute(
-        bayer_mosaic: Shaped[Array, "h w"]
-    ) -> Shaped[Array, "h w"]:
+) -> Callable[[Input], Output]:
+    def compute(bayer_mosaic: Input) -> Output:
         channels = split_bayer(bayer_mosaic, sensor.bayer_pattern)
         r, gr, gb, b = channels
 
