@@ -119,3 +119,38 @@ def mean_filter(
     padded = pad_spatial(array, window_size // 2, mode="reflect")
     total = reduce_windows(add, padded, window_size)
     return (total / window_size**2).astype(array.dtype)
+
+@partial(jit, static_argnums=(1,))
+def gaussian_kernel(sigma: float, kernel_size: int):
+    x = jnp.arange(kernel_size) - kernel_size // 2
+    x += (0.5 if kernel_size % 2 == 0 else 0)
+    y, x = jnp.meshgrid(x, x)
+    kernel = jnp.exp(-(x ** 2 + y ** 2) / (2 * sigma ** 2))
+    return kernel / kernel.sum()
+
+@jit
+def bilateral_filter(
+    array,
+    spatial_weight,
+    intensity_weight_lut,
+    right_shift=0
+):
+    filter_height, filter_width = spatial_weight.shape[:2]
+    spatial_weight = spatial_weight.flatten()
+
+    padded_array = pad_spatial(
+        array, padding=filter_height // 2, mode="reflect")
+
+    bf_array = jnp.zeros_like(array)
+    weights = jnp.zeros_like(array)
+
+    for i, (x, y) in enumerate(product(range(filter_width), repeat=2)):
+        neighbor = neighbor_windows_slice(padded_array, filter_width, x, y)
+        intensity_diff = (neighbor - array) ** 2
+        weight = intensity_weight_lut[intensity_diff] * spatial_weight[i]
+        weight = jnp.right_shift(weight, right_shift)
+
+        bf_array += neighbor * weight
+        weights += weight
+
+    return (bf_array / weights).astype(array.dtype)
