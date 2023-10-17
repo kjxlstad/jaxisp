@@ -29,7 +29,7 @@ def hsc[Input: Shaped[Array, "h w 2"], Output: Shaped[Array, "h w 2"]](
         hsc_cr_image = jnp.right_shift(
             saturation_gain * hsc_cr_image, 8) + 128
 
-        hsc_cbcr_image = jnp.stack([hsc_cb_image, hsc_cr_image], axis=-1)
-        return jnp.clip(hsc_cbcr_image, 0, saturation_sdr)
+        hsc_cbcr_image = jnp.concatenate([hsc_cb_image, hsc_cr_image], axis=2)
+        return jnp.clip(hsc_cbcr_image, 0, saturation_sdr).astype(jnp.uint8)
 
     return jit(compute)

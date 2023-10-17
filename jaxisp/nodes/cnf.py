@@ -21,17 +21,17 @@ def compute_noise_diff(channels: Shaped[Array, "4 h w"], diff_threshold: int):
     avg_b = mean_filter(b, window_size=5)
 
     is_r_noise = (
-        (jnp.abs(r - avg_r) > diff_threshold)
-        * (jnp.abs(r - avg_g) > diff_threshold)
-        * (jnp.abs(avg_r - avg_g) > diff_threshold)
-        * (jnp.abs(avg_r - avg_b) < diff_threshold)
+        (r - avg_g > diff_threshold)
+        * (r - avg_b > diff_threshold)
+        * (avg_r - avg_g > diff_threshold)
+        * (avg_r - avg_b < diff_threshold)
     )
 
     is_b_noise = (
-        (jnp.abs(b - avg_g) > diff_threshold)
-        * (jnp.abs(b - avg_r) > diff_threshold)
-        * (jnp.abs(avg_b - avg_g) > diff_threshold)
-        * (jnp.abs(avg_b - avg_r) < diff_threshold)
+        (b - avg_g > diff_threshold)
+        * (b - avg_r > diff_threshold)
+        * (avg_b - avg_g > diff_threshold)
+        * (avg_b - avg_r < diff_threshold)
     )
 
     return avg_r, avg_g, avg_b, is_r_noise, is_b_noise
@@ -57,14 +57,24 @@ def compute_noise_correction(array, avg_g, avg_c1, avg_c2, y, gain):
     signal_gap = array - max_avg
     chroma_corrected = max_avg + jnp.right_shift(damp_factor * signal_gap, 8)
 
-    weight = jnp.array([1.0, 0.9, 0.8, 0.7, 0.6, 0.3, 0.1])
     lower_bound = jnp.array([0, 30, 50, 70, 100, 150, 200])
     upper_bound = jnp.array([30, 50, 70, 100, 150, 200, 250])
-    fade_1 = piecewise_weight(y, weight, lower_bound, upper_bound)
-    fade_2 = piecewise_weight(avg_c1, weight, lower_bound, upper_bound)
+
+    fade_1 = piecewise_weight(
+        y,
+        jnp.array([1., .9, .8, .7, .6, .3, .1]),
+        lower_bound, upper_bound
+    )
+
+    fade_2 = piecewise_weight(
+        y,
+        jnp.array([1., .9, .8, .6, .5, .3]),
+        lower_bound[:-1], upper_bound[:-1]
+    )
 
     fade = fade_1 * fade_2
-    return fade * chroma_corrected + (1 - fade) * array
+    return (fade * chroma_corrected + (1 - fade) * array).astype(jnp.int32)
+
 
 @validate_call
 def cnf[Input: Shaped[Array, "h w"], Output: Shaped[Array, "h w"]](
@@ -94,6 +104,6 @@ def cnf[Input: Shaped[Array, "h w"], Output: Shaped[Array, "h w"]](
             jnp.stack([r_cnc, gr, gb, b_cnc]),
             sensor.bayer_pattern
         )
-        return jnp.clip(bayer, 0, saturation_hdr)
+        return jnp.clip(bayer, 0, saturation_hdr).astype(jnp.uint16)
 
     return jit(compute)

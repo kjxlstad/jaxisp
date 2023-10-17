@@ -15,7 +15,7 @@ def gac[Input: ImageRGB, Output: ImageRGB](
     saturation_hdr: int,
 ) -> Callable[[Input], Output]:
     x = jnp.arange(saturation_hdr + 1)
-    lut = ((x / saturation_hdr) ** gamma) * saturation_sdr
+    lut = (((x / saturation_hdr) ** gamma) * saturation_sdr).astype(jnp.uint8)
 
     def compute(array: Input) -> Output:
         gac_rgb_image = (array * gain) >> 8
