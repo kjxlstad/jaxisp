@@ -5,6 +5,8 @@ from jax import jit
 from jaxtyping import Array, Shaped
 from pydantic import validate_call
 
+from jaxisp.nodes.common import sdr_filter
+
 
 @validate_call
 def bcc[Input: Shaped[Array, 'h w 3'], Output: Shaped[Array, 'h w 3']](
@@ -15,6 +17,7 @@ def bcc[Input: Shaped[Array, 'h w 3'], Output: Shaped[Array, 'h w 3']](
     brightness_offset = jnp.array(brightness_offset).astype(jnp.int32)
     contrast_gain = jnp.array(contrast_gain).astype(jnp.int32)
 
+    @sdr_filter
     def compute(array: Input) -> Output:
         bcc_y_image = jnp.clip(array + brightness_offset, 0, saturation_sdr)
 

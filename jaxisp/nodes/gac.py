@@ -4,6 +4,7 @@ import jax.numpy as jnp
 from jax import jit
 from pydantic import validate_call
 
+from jaxisp.nodes.common import hdr_filter
 from jaxisp.type_utils import ImageRGB
 
 
@@ -17,6 +18,7 @@ def gac[Input: ImageRGB, Output: ImageRGB](
     x = jnp.arange(saturation_hdr + 1)
     lut = (((x / saturation_hdr) ** gamma) * saturation_sdr).astype(jnp.uint8)
 
+    @hdr_filter
     def compute(array: Input) -> Output:
         gac_rgb_image = (array * gain) >> 8
         gac_rgb_image = jnp.clip(gac_rgb_image, 0, saturation_hdr)

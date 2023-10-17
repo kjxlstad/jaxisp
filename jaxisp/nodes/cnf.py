@@ -7,7 +7,7 @@ from jaxtyping import Array, Shaped
 from pydantic import validate_call
 
 from jaxisp.helpers import mean_filter, merge_bayer, split_bayer
-from jaxisp.nodes.common import SensorConfig
+from jaxisp.nodes.common import SensorConfig, raw_filter
 
 
 # TODO: add output type
@@ -82,8 +82,9 @@ def cnf[Input: Shaped[Array, "h w"], Output: Shaped[Array, "h w"]](
     gain_r: int,
     gain_b: int,
     sensor: SensorConfig,
-    saturation_hdr: int, # TODO: fixme
+    saturation_hdr: int,
 ) -> Callable[[Input], Output]:
+    @raw_filter
     def compute(bayer_mosaic: Input) -> Output:
         channels = split_bayer(bayer_mosaic, sensor.bayer_pattern)
         r, gr, gb, b = channels
@@ -104,6 +105,6 @@ def cnf[Input: Shaped[Array, "h w"], Output: Shaped[Array, "h w"]](
             jnp.stack([r_cnc, gr, gb, b_cnc]),
             sensor.bayer_pattern
         )
-        return jnp.clip(bayer, 0, saturation_hdr).astype(jnp.uint16)
+        return jnp.clip(bayer, 0, saturation_hdr)
 
     return jit(compute)

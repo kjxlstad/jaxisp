@@ -6,7 +6,7 @@ from jaxtyping import Array, Shaped
 from pydantic import validate_call
 
 from jaxisp.helpers import merge_bayer, split_bayer
-from jaxisp.nodes.common import SensorConfig
+from jaxisp.nodes.common import SensorConfig, raw_filter
 
 
 @validate_call
@@ -19,6 +19,7 @@ def blc[Input: Shaped[Array, "h w"], Output: Shaped[Array, "h w"]](
     black_level_b: int,
     sensor: SensorConfig,
 ) -> Callable[[Input], Output]:
+    @raw_filter
     def compute(bayer_mosaic: Input) -> Output:
         r, gr, gb, b = split_bayer(bayer_mosaic, sensor.bayer_pattern)
 

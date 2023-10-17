@@ -6,7 +6,7 @@ from jaxtyping import Array, Shaped
 from pydantic import validate_call
 
 from jaxisp.helpers import merge_bayer, split_bayer
-from jaxisp.nodes.common import SensorConfig
+from jaxisp.nodes.common import SensorConfig, raw_filter
 
 
 @validate_call
@@ -15,10 +15,10 @@ def awb[Input: Shaped[Array, "h w"], Output: Shaped[Array, "h w"]](
     gain_gr: int,
     gain_gb: int,
     gain_b: int,
-
     sensor: SensorConfig,
-    saturation_hdr: int, # TODO: fixme
+    saturation_hdr: int,
 ) -> Callable[[Input], Output]:
+    @raw_filter
     def compute(bayer_mosaic: Input) -> Output:
         channels = split_bayer(bayer_mosaic, sensor.bayer_pattern)
         gains = jnp.array(

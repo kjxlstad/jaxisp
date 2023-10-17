@@ -10,7 +10,7 @@ from jaxtyping import Array, Shaped
 from pydantic import validate_call
 
 from jaxisp.helpers import bayer_neighbor_pixels, merge_bayer
-from jaxisp.nodes.common import SensorConfig
+from jaxisp.nodes.common import SensorConfig, raw_filter
 
 # shorthand cardinal directions
 NW = 0
@@ -91,6 +91,7 @@ def dpc[Input: Shaped[Array, "h w"], Output: Shaped[Array, "h w"]](
 ) -> Callable[[Input], Output]:
     correction_func = jit(DPCMode.correction_func(mode))
 
+    @raw_filter
     def compute(bayer_mosaic: Input) -> Output:
         grid = bayer_neighbor_pixels(
             bayer_mosaic, sensor.bayer_pattern

@@ -6,6 +6,7 @@ from jaxtyping import Array, Int32, Shaped
 from pydantic import validate_call
 
 from jaxisp.helpers import bilateral_filter, gaussian_kernel
+from jaxisp.nodes.common import sdr_filter
 
 
 @jit
@@ -24,9 +25,10 @@ def bnf[Input: Shaped[Array, 'h w 3'], Output: Shaped[Array, 'h w 3']](
     spatial_weight = (
         1024 * spatial_weight / spatial_weight.max()).astype(jnp.int32)
 
+    @sdr_filter
     def compute(array: Input) -> Output:
         bf_y_image = bilateral_filter(
             array, spatial_weight, itensity_weight_lut, right_shift=10)
-        return bf_y_image.astype(jnp.uint8)
+        return bf_y_image
 
     return jit(compute)

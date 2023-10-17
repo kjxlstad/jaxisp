@@ -5,6 +5,8 @@ from jax import jit
 from jaxtyping import Array, Shaped
 from pydantic import validate_call
 
+from jaxisp.nodes.common import sdr_filter
+
 
 @validate_call
 def hsc[Input: Shaped[Array, "h w 2"], Output: Shaped[Array, "h w 2"]](
@@ -16,6 +18,7 @@ def hsc[Input: Shaped[Array, "h w 2"], Output: Shaped[Array, "h w 2"]](
     sin_hue = (256 * jnp.sin(hue_offset)).astype(jnp.int32)
     cos_hue = (256 * jnp.cos(hue_offset)).astype(jnp.int32)
 
+    @sdr_filter
     def compute(array: Input) -> Output:
         cb_image, cr_image = jnp.split(array, 2, axis=-1)
 
@@ -30,6 +33,6 @@ def hsc[Input: Shaped[Array, "h w 2"], Output: Shaped[Array, "h w 2"]](
             saturation_gain * hsc_cr_image, 8) + 128
 
         hsc_cbcr_image = jnp.concatenate([hsc_cb_image, hsc_cr_image], axis=2)
-        return jnp.clip(hsc_cbcr_image, 0, saturation_sdr).astype(jnp.uint8)
+        return jnp.clip(hsc_cbcr_image, 0, saturation_sdr)
 
     return jit(compute)
