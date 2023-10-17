@@ -31,21 +31,41 @@ class SensorConfig:
     )
 
 
-def filter_type(in_types: Iterable[type], out_types: Iterable[type]):
-    """Creates a decorator that handles safe input and output type casting."""
+def one_to_one_filter(in_type: type, out_type: type):
+    """Creates a decorator that handles safe input and output type casting.
+    For filters that take a single array as input and output.
+    """
     def decorator(func):
-        def wrapper(*arrays):
-            inputs = [a.astype(t) for a, t in zip(arrays, in_types)]
-            result = func(*inputs)
+        def wrapper(array):
+            input_ = array.astype(in_type)
+            return func(input_).astype(out_type)
+        return wrapper
+    return decorator
 
-            if isinstance(result, jnp.ndarray):
-                return result.astype(out_types)
-
+def one_to_many_filter(in_type: type, out_types: Iterable[type]):
+    """Creates a decorator that handles safe input and output type casting.
+    For filters that take a single array as input and output multiple arrays.
+    """
+    def decorator(func):
+        def wrapper(array):
+            input_ = array.astype(in_type)
+            result = func(input_)
             return tuple(a.astype(t) for a, t in zip(result, out_types))
         return wrapper
     return decorator
 
+def many_to_one_filter(in_types: Iterable[type], out_type: type):
+    """Creates a decorator that handles safe input and output type casting.
+    For filters that take multiple arrays as input and output a single array.
+    """
+    def decorator(func):
+        def wrapper(*arrays):
+            inputs = [a.astype(t) for a, t in zip(arrays, in_types)]
+            result = func(*inputs)
+            return result.astype(out_type)
+        return wrapper
+    return decorator
 
-raw_filter = filter_type(jnp.int32, jnp.uint16)
-hdr_filter = filter_type(jnp.int32, jnp.uint16)
-sdr_filter = filter_type(jnp.int32, jnp.uint8)
+raw_filter = one_to_one_filter(jnp.int32, jnp.uint16)
+hdr_filter = one_to_one_filter(jnp.int32, jnp.uint16)
+sdr_filter = one_to_one_filter(jnp.int32, jnp.uint8)
